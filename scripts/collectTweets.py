@@ -6,10 +6,10 @@ import os
 def gettwitterdata(keyword, dfile):
 
     # Twitter APIを使用するためのConsumerキー、アクセストークン設定
-    Consumer_key = os.environ['Consumer_key']
-    Consumer_secret = os.environ['Consumer_secret']
-    Access_token = os.environ['Access_token']
-    Access_secret = os.environ['Access_secret']
+    Consumer_key = os.environ['T_Consumer_key']
+    Consumer_secret = os.environ['T_Consumer_secret']
+    Access_token = os.environ['T_Access_token']
+    Access_secret = os.environ['T_Access_secret']
 
     # 認証
     auth = tweepy.OAuthHandler(Consumer_key, Consumer_secret)
