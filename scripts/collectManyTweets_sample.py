@@ -7,15 +7,13 @@ import time
 import sys
 from abc import ABCMeta, abstractmethod
 import os
-import pandas as pd
 
 CK = os.environ['T_Consumer_key']                             # Consumer Key
 CS = os.environ['T_Consumer_secret']    # Consumer Secret
 AT = os.environ['T_Access_token']    # Access Token
 AS = os.environ['T_Access_secret']         # Accesss Token Secert
 
-COUNT = 200
-
+COUNT = 100
 
 class TweetsGetter(object):
     __metaclass__ = ABCMeta
@@ -244,38 +242,19 @@ class TweetsGetterByUser(TweetsGetter):
         return int(remaining), int(reset)
 
 
-def set_keyword(genre):
-    # genre, row
-    # 地名　食べ物　映画　テレビ　スポーツ　芸能人　本マンガアニメ　人間関係　家族　仕事　恋愛  趣味
-    # 1,2  3~23  24,25  26      27     28       29,30       31     32   33   34   35
-
-    keyword_list = []
-    with open('./data/talk_genre.csv') as f:
-        talk_genre_csv = pd.read_csv(f, sep=' ')
-
-    genre_bool_list = talk_genre_csv['genre'] == genre
-
-    keyword_list = talk_genre_csv[genre_bool_list].trigger.values[0].split(',')
-
-    return keyword_list
-
-
 if __name__ == '__main__':
 
-        # # ユーザーを指定して取得 （screen_name）
-        # #getter = TweetsGetter.byUser('AbeShinzo')
-    genre = 'スポーツ'
-    keyword_list = set_keyword(genre)
-    for key in keyword_list:
-        # キーワードで取得
-        getter = TweetsGetter.bySearch(key)
-        cnt = 0
-        for tweet in getter.collect(total=400):
-            cnt += 1
-            print('------ %d' % cnt)
-            print('{} {} {}'.format(
-                tweet['id'], tweet['created_at'], '@'+tweet['user']['screen_name']))
-            t = ''.join(tweet['text'].splitlines())
-            print(t)
-            with open('data/sports_data.csv', 'a') as f:
-                f.writelines(genre + ',' + key + ',' + t + '\n')
+    # キーワードで取得
+    getter = TweetsGetter.bySearch(u'渋谷')
+
+    # ユーザーを指定して取得 （screen_name）
+    #getter = TweetsGetter.byUser('AbeShinzo')
+
+    cnt = 0
+    for tweet in getter.collect(total=1000):
+        cnt += 1
+        print('------ %d' % cnt)
+        print('{} {} {}'.format(
+            tweet['id'], tweet['created_at'], '@'+tweet['user']['screen_name']))
+        print(tweet['text'])
+        #
