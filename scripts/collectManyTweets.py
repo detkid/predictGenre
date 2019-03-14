@@ -14,7 +14,7 @@ CS = os.environ['T_Consumer_secret']    # Consumer Secret
 AT = os.environ['T_Access_token']    # Access Token
 AS = os.environ['T_Access_secret']         # Accesss Token Secert
 
-COUNT = 200
+COUNT = 176 # < 10000/len(keyword_list)
 
 
 class TweetsGetter(object):
@@ -255,27 +255,33 @@ def set_keyword(genre):
 
     genre_bool_list = talk_genre_csv['genre'] == genre
 
-    keyword_list = talk_genre_csv[genre_bool_list].trigger.values[0].split(',')
+    all_keywords = talk_genre_csv[genre_bool_list].trigger.values
+    for value in all_keywords:
+        keywords = value.split(',')
+        for word in keywords:
+            keyword_list.append(word)
 
+    print('keyword number = ' + str(len(keyword_list)))
+    print('total and COUNT should be ' + str(10000/len(keyword_list)))
     return keyword_list
 
 
 if __name__ == '__main__':
 
-        # # ユーザーを指定して取得 （screen_name）
-        # #getter = TweetsGetter.byUser('AbeShinzo')
-    genre = 'スポーツ'
-    keyword_list = set_keyword(genre)
+    # ユーザーを指定して取得 （screen_name）
+    #getter = TweetsGetter.byUser('AbeShinzo')
+    genre='映画'
+    keyword_list=set_keyword(genre)
     for key in keyword_list:
         # キーワードで取得
-        getter = TweetsGetter.bySearch(key)
-        cnt = 0
-        for tweet in getter.collect(total=400):
+        getter=TweetsGetter.bySearch(key)
+        cnt=0
+        for tweet in getter.collect(total=176):
             cnt += 1
             print('------ %d' % cnt)
             print('{} {} {}'.format(
                 tweet['id'], tweet['created_at'], '@'+tweet['user']['screen_name']))
-            t = ''.join(tweet['text'].splitlines())
+            t=''.join(tweet['text'].splitlines())
             print(t)
-            with open('data/sports_data.csv', 'a') as f:
+            with open('data/movie_data.csv', 'a') as f:
                 f.writelines(genre + ',' + key + ',' + t + '\n')
