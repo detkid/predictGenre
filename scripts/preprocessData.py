@@ -7,40 +7,15 @@ import glob
 import MeCab
 import re
 
-# # TODO
-# LDA model
-# 1. import csv data as pandas
-# 2. format as numpy array [string data, label]
-# 3. segmentate string data by mecab
-# 4. wash data (discarding symbol, mark, non-independent words)
-# 5. make one-hot vector
-# 6. make corpus
-# 7. make dictionary
-# 8. make LDA model
-
-# CNN model
-# 1. import csv data as pandas
-# 2. format as numpy array [string data, label]
-# 3. segmentate string data by mecab
-# 4. wash data (discarding symbol, mark, non-independent words)
-# 5. make one-hot vector
-# 6. make CNN model by keras
-
-# RNN model
-# 1. import csv data as pandas
-# 2. format as numpy array [string data, label]
-# 3. segmentate string data by mecab
-# 4. wash data (discarding symbol, mark, non-independent words)
-# 5. make one-hot vector
-# 6. make LSTM model by keras
-
 
 def csv_to_l_data(file):
     data = []
     dict_items = []
     m = MeCab.Tagger("-d /usr/local/lib/mecab/dic/mecab-ipadic-neologd")
+    node = m.parseToNode('初期化')  # 初期化しないと最初のnode.surfaceが空になる
 
-    raw_data = np.genfromtxt(file, delimiter=',', names=True, dtype=None)
+    raw_data = np.genfromtxt(
+        file, delimiter=',', names=True, dtype=None, encoding='utf-8')
     for row in raw_data:
         text = wash_data(row[2])
         node = m.parseToNode(text)
@@ -50,7 +25,7 @@ def csv_to_l_data(file):
             word = node.surface
             if node.next:
                 word = word.replace(node.next.surface, '')
-            if node.feature.split(',')[0] in ['名詞', '動詞'] and word != row[0]:
+            if node.feature.split(',')[0] in ['名詞'] and word != row[0]:
                 dict_items.append(word)
                 seg_txt.append(word)
             node = node.next
@@ -74,11 +49,7 @@ def wash_data(text):
     return text
 
 
-def make_dictionary(words_list):
-    dictionary = corpora.Dictionary(words_list)
-
-
-def list_to_vec(words_list):
+def make_indexdict(words_list):
     mat = np.array(words_list)
     words = sorted(list(set(mat)))
     cnt = np.zeros(len(words))
@@ -106,51 +77,61 @@ def list_to_vec(words_list):
     word_indices = dict((w, i) for i, w in enumerate(words))  # 単語をキーにインデックス検索
     indices_word = dict((i, w) for i, w in enumerate(words))  # インデックスをキーに単語を検索
 
-    # 前後の語数
-    maxlen = 10
+    return word_indices
 
-    mat_urtext = np.zeros((len(mat), 1), dtype=int)
-    for i in range(0, len(mat)):
-        # 出現頻度の低い単語のインデックスをunkのそれに置き換え
-        if mat[i] in word_indices:
-            mat_urtext[i, 0] = word_indices[mat[i]]
-        else:
-            mat_urtext[i, 0] = word_indices['UNK']
+    # 以下、Word2Vec向け
+    # # 前後の語数
+    # maxlen = 10
 
-    print(mat_urtext.shape)
+    # mat_urtext = np.zeros((len(mat), 1), dtype=int)
+    # for i in range(0, len(mat)):
+    #     # 出現頻度の低い単語のインデックスをunkのそれに置き換え
+    #     if mat[i] in word_indices:
+    #         mat_urtext[i, 0] = word_indices[mat[i]]
+    #     else:
+    #         mat_urtext[i, 0] = word_indices['UNK']
 
-    len_seq = len(mat_urtext) - maxlen
-    data = []
-    target = []
-    for i in range(maxlen, len_seq):
-        data.append(mat_urtext[i])
-        target.extend(mat_urtext[i-maxlen:i])
-        target.extend(mat_urtext[i+1:i+1+maxlen])
+    # print(mat_urtext.shape)
 
-    x_train = np.array(data).reshape(len(data), 1)
-    t_train = np.array(target).reshape(len(data), maxlen*2)
+    # len_seq = len(mat_urtext) - maxlen
+    # data = []
+    # target = []
+    # for i in range(maxlen, len_seq):
+    #     data.append(mat_urtext[i])
+    #     target.extend(mat_urtext[i-maxlen:i])
+    #     target.extend(mat_urtext[i+1:i+1+maxlen])
 
-    z = list(zip(x_train, t_train))
-    nr.seed(12345)
-    nr.shuffle(z)                 # シャッフル
-    x_train, t_train = zip(*z)
+    # x_train = np.array(data).reshape(len(data), 1) # indexのリスト
+    # t_train = np.array(target).reshape(len(data), maxlen*2) # 前後の単語のindex (中心の単語は含まない)
 
-    x_train = np.array(x_train).reshape(len(data), 1)
-    t_train = np.array(t_train).reshape(len(data), maxlen*2)
+    # z = list(zip(x_train, t_train))
+    # nr.seed(12345)
+    # nr.shuffle(z)                 # シャッフル
+    # x_train, t_train = zip(*z)
 
-    print(x_train.shape, t_train.shape)
-    return x_train, t_train
+    # x_train = np.array(x_train).reshape(len(data), 1)
+    # t_train = np.array(t_train).reshape(len(data), maxlen*2)
 
+    # print(x_train.shape, t_train.shape)
 
-def makeModel(train_data):
-    return model
 
 if __name__ == "__main__":
 
     with open('./data/tweet_data/sports_data.csv', encoding='utf-8') as file:
         data, words_list = csv_to_l_data(file)
 
-    x_train, t_train = list_to_vec(words_list)
-    print('end')
+    index_dict = make_indexdict(words_list)
 
-    # pickle.dump(clean_data_list, 'data/clean_dataset')
+    data_list = []
+    dataset = []
+    for l_data in data:
+        sentence = l_data[0]
+        label = l_data[1]
+        data_list = [index_dict[sentence[i]]
+                     for i in range(len(sentence)) if index_dict.get(sentence[i])]
+
+        dataset.append([data_list, label])
+
+    dataset = np.array(dataset)
+    with open('data/dataset/clean_dataset.pickle', 'wb') as f:
+        pickle.dump(dataset, f)
