@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.random as nr
 from gensim import corpora, models, similarities
 import pandas as pd
 import pickle
@@ -62,11 +63,6 @@ def csv_to_l_data(file):
     return data, dict_items
 
 
-def extract_nouns():
-
-    return data
-
-
 def wash_data(text):
     text = re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-…]+', "", text)
     text = re.sub('RT', "", text)
@@ -82,20 +78,79 @@ def make_dictionary(words_list):
     dictionary = corpora.Dictionary(words_list)
 
 
+def list_to_vec(words_list):
+    mat = np.array(words_list)
+    words = sorted(list(set(mat)))
+    cnt = np.zeros(len(words))
+
+    print('total words:', len(words))
+    word_indices = dict((w, i) for i, w in enumerate(words))  # 単語をキーにインデックス検索
+    indices_word = dict((i, w) for i, w in enumerate(words))  # インデックスをキーに単語を検索
+
+    # 単語の出現数をカウント
+    for j in range(0, len(mat)):
+        cnt[word_indices[mat[j]]] += 1
+
+    # 出現頻度の少ない単語を「UNK」で置き換え
+    words_unk = []                           # 未知語一覧
+
+    for k in range(0, len(words)):
+        if cnt[k] <= 3:
+            words_unk.append(words[k])
+            words[k] = 'UNK'
+
+    print('低頻度語数:', len(words_unk))    # words_unkはunkに変換された単語のリスト
+
+    words = sorted(list(set(words)))
+    print('total words:', len(words))
+    word_indices = dict((w, i) for i, w in enumerate(words))  # 単語をキーにインデックス検索
+    indices_word = dict((i, w) for i, w in enumerate(words))  # インデックスをキーに単語を検索
+
+    # 前後の語数
+    maxlen = 10
+
+    mat_urtext = np.zeros((len(mat), 1), dtype=int)
+    for i in range(0, len(mat)):
+        # 出現頻度の低い単語のインデックスをunkのそれに置き換え
+        if mat[i] in word_indices:
+            mat_urtext[i, 0] = word_indices[mat[i]]
+        else:
+            mat_urtext[i, 0] = word_indices['UNK']
+
+    print(mat_urtext.shape)
+
+    len_seq = len(mat_urtext) - maxlen
+    data = []
+    target = []
+    for i in range(maxlen, len_seq):
+        data.append(mat_urtext[i])
+        target.extend(mat_urtext[i-maxlen:i])
+        target.extend(mat_urtext[i+1:i+1+maxlen])
+
+    x_train = np.array(data).reshape(len(data), 1)
+    t_train = np.array(target).reshape(len(data), maxlen*2)
+
+    z = list(zip(x_train, t_train))
+    nr.seed(12345)
+    nr.shuffle(z)                 # シャッフル
+    x_train, t_train = zip(*z)
+
+    x_train = np.array(x_train).reshape(len(data), 1)
+    t_train = np.array(t_train).reshape(len(data), maxlen*2)
+
+    print(x_train.shape, t_train.shape)
+    return x_train, t_train
+
+
+def makeModel(train_data):
+    return model
+
 if __name__ == "__main__":
-    # datafiles = glob.glob()
-    # clean_data_list = []
 
-    # for filepath in datafiles:
-    #     with open(filepath) as file:
-    #         data = csv_to_l_data(file)
-    #     data = segmentate_string(data)
-    #     data = extract_nouns(data)
-    #     clean_data_list.append(data)
+    with open('./data/tweet_data/sports_data.csv', encoding='utf-8') as file:
+        data, words_list = csv_to_l_data(file)
 
-    with open('./data/sports_data.csv', encoding='utf-8') as file:
-        csv_to_l_data(file)
-
+    x_train, t_train = list_to_vec(words_list)
     print('end')
 
     # pickle.dump(clean_data_list, 'data/clean_dataset')
