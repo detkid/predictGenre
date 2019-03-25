@@ -117,7 +117,7 @@ def make_indexdict(words_list):
 
 if __name__ == "__main__":
 
-    with open('./data/tweet_data/sports_data.csv', encoding='utf-8') as file:
+    with open('./data/tweet/sports_data.csv', encoding='utf-8') as file:
         data, words_list = csv_to_l_data(file)
 
     index_dict = make_indexdict(words_list)
@@ -126,12 +126,14 @@ if __name__ == "__main__":
     dataset = []
     for l_data in data:
         sentence = l_data[0]
-        label = l_data[1]
+        if l_data[1] == 'スポーツ':
+            label = 1
         data_list = [index_dict[sentence[i]]
                      for i in range(len(sentence)) if index_dict.get(sentence[i])]
 
         dataset.append([data_list, label])
 
     dataset = np.array(dataset)
-    with open('data/dataset/clean_dataset.pickle', 'wb') as f:
-        pickle.dump(dataset, f)
+    np.save('data/dataset/clean_dataset.npy', dataset)
+    # with open('data/dataset/clean_dataset.pickle', 'wb') as f:
+    #     pickle.dump(dataset, f)
