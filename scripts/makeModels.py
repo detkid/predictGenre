@@ -1,14 +1,25 @@
+import keras
+from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Dense, Input, GlobalMaxPooling1D
 from keras.layers import Conv1D, MaxPooling1D, Embedding
-from keras.models import Model
-from keras.layers import Input, Dense, Embedding, Conv2D, MaxPooling2D, Dropout, concatenate
+from keras.layers import Input, Dense, Embedding, Conv2D, MaxPooling2D, Dropout, concatenate, Activation
 from keras.layers.core import Reshape, Flatten
 from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam
 from keras.models import Model
+from keras.models import Sequential
 from keras import regularizers, models, layers
 import numpy as np
 import pickle
+
+num_classes = 2
+maxlen = 10
+max_features = 5000
+embedding_dims = 50
+batch_size = 1000
+epochs = 4
+kernel_size = 3
+filters = 250
 
 
 def create_model(self):
@@ -46,16 +57,7 @@ def vectorized_sequences(sequences, dimension=10000):
     return results
 
 
-if __name__ == "__main__":
-    # with codecs.open('data/dataset/clean_dataset.pickle', mode='rb', encoding='utf-8') as f:
-    #     data = pickle.loads(f)
-
-    data = np.load('data/dataset/clean_dataset.npy')
-
-    np.random.shuffle(data)
-    x_train = data[:, 0]
-    y_train = data[:, 1]
-
+def make_sample_model():
     # 訓練データのワンホットベクトル化
     x_train = vectorized_sequences(x_train)
     # x_test  = vectorized_sequences(test_data)
@@ -63,12 +65,6 @@ if __name__ == "__main__":
     # ラベルの変換
     y_train = np.asarray(y_train).astype('float32')
     # y_test = np.asarray(test_labels).astype('float32')
-
-    split_number = 9000
-    x_val = x_train[:split_number]
-    partial_x_train = x_train[split_number:]
-    y_val = y_train[:split_number]
-    partial_y_train = y_train[split_number:]
 
     # sample model
     model = models.Sequential()
@@ -83,5 +79,69 @@ if __name__ == "__main__":
                         epochs=20,
                         batch_size=512,
                         validation_data=(x_val, y_val))
+    return history
+
+
+def make_embedding_model(x_train, y_train, x_test, y_test, max_features, embedding_dims, maxlen):
+    print('Build model...')
+    model = Sequential()
+
+    # we start off with an efficient embedding layer which maps
+    # our vocab indices into embedding_dims dimensions
+    model.add(Embedding(max_features,
+                        embedding_dims,
+                        input_length=maxlen))
+    model.add(Dropout(0.2))
+
+    # we add a Convolution1D, which will learn filters
+    # word group filters of size filter_length:
+    model.add(Conv1D(filters,
+                     kernel_size,
+                     padding='valid',
+                     activation='relu',
+                     strides=1))
+    # we use max pooling:
+    model.add(GlobalMaxPooling1D())
+
+    # # We add a vanilla hidden layer:
+    # model.add(Dense(hidden_dims))
+    # model.add(Dropout(0.2))
+    # model.add(Activation('relu'))
+
+    # We project onto a single unit output layer, and squash it with a sigmoid:
+    #### softmaxを使用するので改良 ###
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='adam',
+                  metrics=['accuracy'])
+    model.fit(x_train, y_train,
+              batch_size=batch_size,
+              epochs=epochs,
+              validation_data=(x_test, y_test))
+
+
+if __name__ == "__main__":
+    # with codecs.open('data/dataset/clean_dataset.pickle', mode='rb', encoding='utf-8') as f:
+    #     data = pickle.loads(f)
+
+    data = np.load('data/dataset/clean_dataset.npy')
+
+    np.random.shuffle(data)
+    x_train = data[:, 0]
+    y_train = data[:, 1]
+
+    x_train = pad_sequences(x_train, maxlen=maxlen)
+    y_train = keras.utils.to_categorical(y_train, num_classes)
+
+    split_number = 9000
+    x_val = x_train[split_number:]
+    part_x_train = x_train[:split_number]
+    y_val = y_train[split_number:]
+    part_y_train = y_train[:split_number]
+
+    model = make_embedding_model(
+        part_x_train, part_y_train, x_val, y_val, max_features, embedding_dims, maxlen)
 
     print('end')
