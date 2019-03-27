@@ -7,6 +7,11 @@ import glob
 import MeCab
 import re
 
+INPUT_DATA = ['./data/tweet/sports_data.csv', './data/tweet/food_data.csv']
+OUTPUT_PATH = './data/dataset/clean_dataset.npy'
+
+GENRE = ['スポーツ', '食べ物']
+
 
 def csv_to_l_data(file):
     data = []
@@ -33,7 +38,7 @@ def csv_to_l_data(file):
         label = row[0]
         data.append([seg_txt, label])
 
-    data = np.array(data)
+    # data = np.array(data)
 
     return data, dict_items
 
@@ -117,16 +122,24 @@ def make_indexdict(words_list):
 
 if __name__ == "__main__":
 
-    with open('./data/tweet/sports_data.csv', encoding='utf-8') as file:
-        data, words_list = csv_to_l_data(file)
+    all_data = []
+    all_words_list = []
+    for file_path in INPUT_DATA:
+        with open(file_path, encoding='utf-8') as file:
+            data, words_list = csv_to_l_data(file)
+        all_data.extend(data)
+        all_words_list.extend(words_list)
+    all_data = np.array(all_data)
 
-    index_dict = make_indexdict(words_list)
+    index_dict = make_indexdict(all_words_list)
 
     data_list = []
     dataset = []
-    for l_data in data:
+    for l_data in all_data:
         sentence = l_data[0]
-        if l_data[1] == 'スポーツ':
+        if l_data[1] == GENRE[0]:
+            label = 0
+        elif l_data[1] == GENRE[1]:
             label = 1
         data_list = [index_dict[sentence[i]]
                      for i in range(len(sentence)) if index_dict.get(sentence[i])]
@@ -134,6 +147,6 @@ if __name__ == "__main__":
         dataset.append([data_list, label])
 
     dataset = np.array(dataset)
-    np.save('data/dataset/clean_dataset.npy', dataset)
+    np.save(OUTPUT_PATH, dataset)
     # with open('data/dataset/clean_dataset.pickle', 'wb') as f:
     #     pickle.dump(dataset, f)

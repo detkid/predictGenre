@@ -2,7 +2,7 @@ import keras
 from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Dense, Input, GlobalMaxPooling1D
 from keras.layers import Conv1D, MaxPooling1D, Embedding
-from keras.layers import Input, Dense, Embedding, Conv2D, MaxPooling2D, Dropout, concatenate, Activation
+from keras.layers import Input, Dense, Embedding, Conv2D, MaxPooling2D, Dropout, concatenate, Activation, LSTM
 from keras.layers.core import Reshape, Flatten
 from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam
@@ -12,14 +12,19 @@ from keras import regularizers, models, layers
 import numpy as np
 import pickle
 
+# エラー回避
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 num_classes = 2
 maxlen = 10
-max_features = 5000
+max_features = 7521
 embedding_dims = 50
 batch_size = 1000
 epochs = 4
 kernel_size = 3
 filters = 250
+MODEL = 1
 
 
 def create_model(self):
@@ -82,8 +87,8 @@ def make_sample_model():
     return history
 
 
-def make_embedding_model(x_train, y_train, x_test, y_test, max_features, embedding_dims, maxlen):
-    print('Build model...')
+def make_embedding_CNN(x_train, y_train, x_test, y_test, max_features, embedding_dims, maxlen):
+    print('Build CNN model...')
     model = Sequential()
 
     # we start off with an efficient embedding layer which maps
@@ -121,6 +126,36 @@ def make_embedding_model(x_train, y_train, x_test, y_test, max_features, embeddi
               epochs=epochs,
               validation_data=(x_test, y_test))
 
+    return model
+
+
+def make_embedding_RNN(x_train, y_train, x_test, y_test, max_features, embedding_dims, maxlen):
+    print('Build RNN model...')
+    model = Sequential()
+
+    # we start off with an efficient embedding layer which maps
+    # our vocab indices into embedding_dims dimensions
+    model.add(Embedding(max_features,
+                        embedding_dims,
+                        input_length=maxlen))
+    model.add(Dropout(0.2))
+    model.add(LSTM(10, return_sequences=False))
+
+    # We project onto a single unit output layer, and squash it with a sigmoid:
+    #### softmaxを使用するので改良 ###
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='adam',
+                  metrics=['accuracy'])
+    model.fit(x_train, y_train,
+              batch_size=batch_size,
+              epochs=epochs,
+              validation_data=(x_test, y_test))
+
+    return model
+
 
 if __name__ == "__main__":
     # with codecs.open('data/dataset/clean_dataset.pickle', mode='rb', encoding='utf-8') as f:
@@ -141,7 +176,14 @@ if __name__ == "__main__":
     y_val = y_train[split_number:]
     part_y_train = y_train[:split_number]
 
-    model = make_embedding_model(
-        part_x_train, part_y_train, x_val, y_val, max_features, embedding_dims, maxlen)
+    print('x_train shape = ' + str(part_x_train.shape))
+    print('x_val shape = ' + str(x_val.shape))
+
+    if(MODEL == 0):
+        model = make_embedding_CNN(
+            part_x_train, part_y_train, x_val, y_val, max_features, embedding_dims, maxlen)
+    elif(MODEL == 1):
+        model = make_embedding_RNN(
+            part_x_train, part_y_train, x_val, y_val, max_features, embedding_dims, maxlen)
 
     print('end')
