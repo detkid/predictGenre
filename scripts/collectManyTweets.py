@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from requests_oauthlib import OAuth1Session
 import json
 import datetime
@@ -14,8 +12,10 @@ CS = os.environ['T_Consumer_secret']    # Consumer Secret
 AT = os.environ['T_Access_token']    # Access Token
 AS = os.environ['T_Access_secret']         # Accesss Token Secert
 
-COUNT = 176 # < 10000/len(keyword_list)
-
+COUNT = 107  # < 200
+KEY_TOTAL = 214
+GENRE = '地名'
+FILE_NAME = 'data/tweet/' + 'area_data' + '.csv'
 
 class TweetsGetter(object):
     __metaclass__ = ABCMeta
@@ -221,7 +221,7 @@ class TweetsGetterByUser(TweetsGetter):
         呼出し先 URL、パラメータを返す
         '''
         url = 'https://api.twitter.com/1.1/statuses/user_timeline.json'
-        params = {'screen_name': self.screen_name, 'count': 200}
+        params = {'screen_name': self.screen_name, 'count': COUNT}
         return url, params
 
     def pickupTweet(self, res_text):
@@ -270,18 +270,20 @@ if __name__ == '__main__':
 
     # ユーザーを指定して取得 （screen_name）
     #getter = TweetsGetter.byUser('AbeShinzo')
-    genre='映画'
-    keyword_list=set_keyword(genre)
+    genre = GENRE
+    keyword_list = set_keyword(genre)
     for key in keyword_list:
         # キーワードで取得
-        getter=TweetsGetter.bySearch(key)
-        cnt=0
-        for tweet in getter.collect(total=176):
+        getter = TweetsGetter.bySearch(key)
+        cnt = 0
+        for tweet in getter.collect(total=KEY_TOTAL):
             cnt += 1
             print('------ %d' % cnt)
             print('{} {} {}'.format(
                 tweet['id'], tweet['created_at'], '@'+tweet['user']['screen_name']))
-            t=''.join(tweet['text'].splitlines())
+            t = ''.join(tweet['text'].splitlines())
             print(t)
-            with open('data/movie_data.csv', 'a') as f:
+            t = t.replace(',', ' ')
+            t = t.replace('#', ' ')
+            with open(FILE_NAME, 'a') as f:
                 f.writelines(genre + ',' + key + ',' + t + '\n')
