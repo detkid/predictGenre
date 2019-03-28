@@ -6,14 +6,19 @@ import pickle
 import glob
 import MeCab
 import re
+import glob
 
-INPUT_DATA = ['./data/tweet/sports_data.csv', './data/tweet/food_data.csv']
-OUTPUT_PATH = './data/dataset/clean_dataset.npy'
 
-GENRE = ['スポーツ', '食べ物']
+INPUT_TRAINING_DATA = glob.glob('./data/tweet/*.csv')
+INPUT_TEST_DATA = './data/eval/test.csv'
+OUTPUT_TRAINING_PATH = './data/dataset/clean_dataset.npy'
+OUTPUT_TEST_PATH = './data/dataset/val_dataset.npy'
+
+GENRE = ['スポーツ', '食べ物', '地名', '家族', '本マンガアニメ', '恋愛', '映画', '人間関係', '芸能人', 'テレビ', '仕事']
 
 
 def csv_to_l_data(file):
+    print(file.name + '- importing as data')
     data = []
     dict_items = []
     m = MeCab.Tagger("-d /usr/local/lib/mecab/dic/mecab-ipadic-neologd")
@@ -30,7 +35,7 @@ def csv_to_l_data(file):
             word = node.surface
             if node.next:
                 word = word.replace(node.next.surface, '')
-            if node.feature.split(',')[0] in ['名詞'] and word != row[0]:
+            if node.feature.split(',')[0] in ['名詞', '動詞'] and word != row[0]:
                 dict_items.append(word)
                 seg_txt.append(word)
             node = node.next
@@ -38,9 +43,34 @@ def csv_to_l_data(file):
         label = row[0]
         data.append([seg_txt, label])
 
-    # data = np.array(data)
-
     return data, dict_items
+
+
+def csv_to_v_data(file):
+    print(file.name + '- importing as val data')
+    data = []
+    dict_items = []
+    m = MeCab.Tagger("-d /usr/local/lib/mecab/dic/mecab-ipadic-neologd")
+    node = m.parseToNode('初期化')  # 初期化しないと最初のnode.surfaceが空になる
+
+    raw_data = np.genfromtxt(
+        file, delimiter=',', names=True, dtype=None, encoding='utf-8')
+    for row in raw_data:
+        node = m.parseToNode(row[1])
+        seg_txt = []
+
+        while node:
+            word = node.surface
+            if node.next:
+                word = word.replace(node.next.surface, '')
+            if node.feature.split(',')[0] in ['名詞', '動詞']:
+                seg_txt.append(word)
+            node = node.next
+
+        label = row[0]
+        data.append([seg_txt, label])
+
+    return data
 
 
 def wash_data(text):
@@ -55,6 +85,7 @@ def wash_data(text):
 
 
 def make_indexdict(words_list):
+    print('making dictionary.')
     mat = np.array(words_list)
     words = sorted(list(set(mat)))
     cnt = np.zeros(len(words))
@@ -124,7 +155,7 @@ if __name__ == "__main__":
 
     all_data = []
     all_words_list = []
-    for file_path in INPUT_DATA:
+    for file_path in INPUT_TRAINING_DATA:
         with open(file_path, encoding='utf-8') as file:
             data, words_list = csv_to_l_data(file)
         all_data.extend(data)
@@ -133,20 +164,36 @@ if __name__ == "__main__":
 
     index_dict = make_indexdict(all_words_list)
 
+    np.save('data/dict/word_indices_with_verb.npy', index_dict)
+
+    print('reforming as training dataset.')
     data_list = []
     dataset = []
     for l_data in all_data:
         sentence = l_data[0]
-        if l_data[1] == GENRE[0]:
-            label = 0
-        elif l_data[1] == GENRE[1]:
-            label = 1
+        label = GENRE.index(l_data[1])
         data_list = [index_dict[sentence[i]]
                      for i in range(len(sentence)) if index_dict.get(sentence[i])]
 
         dataset.append([data_list, label])
 
     dataset = np.array(dataset)
-    np.save(OUTPUT_PATH, dataset)
-    # with open('data/dataset/clean_dataset.pickle', 'wb') as f:
-    #     pickle.dump(dataset, f)
+    np.save(OUTPUT_TRAINING_PATH, dataset)
+
+    # with open('data/dict/word_indices_with_verb.npy') as file:
+    #     index_dict = np.load(file)
+
+    print('reforming as test dataset.')
+    val_dataset = []
+    with open(INPUT_TEST_DATA) as file:
+        data = csv_to_v_data(file)
+
+    for v_data_row in data:
+        sentence = v_data_row[0]
+        label = GENRE.index(v_data_row[1])
+        val_list = [index_dict[sentence[i]]
+                    for i in range(len(sentence)) if index_dict.get(sentence[i])]
+        val_dataset.append([val_list, label])
+
+    val_dataset = np.array(val_dataset)
+    np.save(OUTPUT_TEST_PATH, val_dataset)

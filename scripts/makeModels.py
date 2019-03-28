@@ -14,44 +14,18 @@ import pickle
 
 # エラー回避
 import os
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-num_classes = 2
-maxlen = 10
-max_features = 7521
+num_classes = 11
+maxlen = 20
+max_features = 29979  # total words
 embedding_dims = 50
 batch_size = 1000
 epochs = 4
 kernel_size = 3
 filters = 250
+SPLIT_NUMBER = 90000
 MODEL = 1
-
-
-def create_model(self):
-    model = Sequential()
-    model.add(Embedding(self.input_dim, self.output_dim,
-                        input_length=1, embeddings_initializer=uniform(seed=20170719)))
-    model.add(Flatten())
-    model.add(Dense(self.input_dim, use_bias=False,
-                    kernel_initializer=glorot_uniform(seed=20170719)))
-    model.add(Activation("softmax"))
-    model.compile(loss="categorical_crossentropy",
-                  optimizer="RMSprop", metrics=['categorical_accuracy'])
-    print('#2')
-    return model
-
-
-# 学習
-def train(self, x_train, t_train, batch_size, epochs, maxlen, emb_param):
-    early_stopping = EarlyStopping(
-        monitor='categorical_accuracy', patience=1, verbose=1)
-    print('#1', t_train.shape)
-    model = self.create_model()
-    # model.load_weights(emb_param)    # 埋め込みパラメーターセット。ファイルをロードして学習を再開したいときに有効にする
-    print('#3')
-    model.fit(x_train, t_train, batch_size=batch_size, epochs=epochs, verbose=1,
-              shuffle=True, callbacks=[early_stopping], validation_split=0.0)
-    return model
 
 
 # 入力データのベクトル化を行う関数
@@ -87,7 +61,7 @@ def make_sample_model():
     return history
 
 
-def make_embedding_CNN(x_train, y_train, x_test, y_test, max_features, embedding_dims, maxlen):
+def make_embedding_CNN(x_train, y_train, max_features, embedding_dims, maxlen):
     print('Build CNN model...')
     model = Sequential()
 
@@ -121,15 +95,14 @@ def make_embedding_CNN(x_train, y_train, x_test, y_test, max_features, embedding
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
-    model.fit(x_train, y_train,
+    model.fit(x_train, y_train, validation_split=0.1,
               batch_size=batch_size,
-              epochs=epochs,
-              validation_data=(x_test, y_test))
+              epochs=epochs)
 
     return model
 
 
-def make_embedding_RNN(x_train, y_train, x_test, y_test, max_features, embedding_dims, maxlen):
+def make_embedding_RNN(x_train, y_train, max_features, embedding_dims, maxlen):
     print('Build RNN model...')
     model = Sequential()
 
@@ -149,17 +122,31 @@ def make_embedding_RNN(x_train, y_train, x_test, y_test, max_features, embedding
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
-    model.fit(x_train, y_train,
+    model.fit(x_train, y_train, validation_split=0.1,
               batch_size=batch_size,
-              epochs=epochs,
-              validation_data=(x_test, y_test))
+              epochs=epochs)
+
+    return model
+
+
+def evaluate_model(model, x_val, y_val):
+    print('evaluating model...')
+    result = model.predict_classes(x_val)
+
+    for index, group in enumerate(result):
+        if group != y_val[index]:
+            print(str(index) + ': predict = ' + str(group) +
+                  ', label = ' + str(y_val[index]))
+    
+    y_val = keras.utils.to_categorical(y_val, num_classes)
+    score = model.evaluate(x_val,y_val)
+    print('test loss:', score[0])
+    print('test accuracy:', score[1])
 
     return model
 
 
 if __name__ == "__main__":
-    # with codecs.open('data/dataset/clean_dataset.pickle', mode='rb', encoding='utf-8') as f:
-    #     data = pickle.loads(f)
 
     data = np.load('data/dataset/clean_dataset.npy')
 
@@ -170,20 +157,28 @@ if __name__ == "__main__":
     x_train = pad_sequences(x_train, maxlen=maxlen)
     y_train = keras.utils.to_categorical(y_train, num_classes)
 
-    split_number = 9000
-    x_val = x_train[split_number:]
-    part_x_train = x_train[:split_number]
-    y_val = y_train[split_number:]
-    part_y_train = y_train[:split_number]
+    val_data = np.load('data/dataset/val_dataset.npy')
+    x_val = val_data[:, 0]
+    y_val = val_data[:, 1]
 
-    print('x_train shape = ' + str(part_x_train.shape))
+    x_val = pad_sequences(x_val, maxlen=maxlen)
+    # y_val = keras.utils.to_categorical(y_val, num_classes)
+
+    print('x_train shape = ' + str(x_train.shape))
     print('x_val shape = ' + str(x_val.shape))
 
     if(MODEL == 0):
         model = make_embedding_CNN(
-            part_x_train, part_y_train, x_val, y_val, max_features, embedding_dims, maxlen)
+            x_train, y_train, max_features, embedding_dims, maxlen)
+        json_string = model.to_json()
+        open('model/cnn/cnn_model.json', 'w').write(json_string)
+        model.save_weights('model/cnn/cnn_weights.h5')
     elif(MODEL == 1):
         model = make_embedding_RNN(
-            part_x_train, part_y_train, x_val, y_val, max_features, embedding_dims, maxlen)
+            x_train, y_train, max_features, embedding_dims, maxlen)
+        json_string = model.to_json()
+        open('model/rnn/rnn_model.json', 'w').write(json_string)
+        model.save_weights('model/rnn/rnn_weights.h5')
 
-    print('end')
+    evaluate_model(model, x_val, y_val)
+    print('end\n')
