@@ -12,10 +12,10 @@ CS = os.environ['T_Consumer_secret']    # Consumer Secret
 AT = os.environ['T_Access_token']    # Access Token
 AS = os.environ['T_Access_secret']         # Accesss Token Secert
 
-COUNT = 107  # < 200
-KEY_TOTAL = 214
-GENRE = '地名'
-FILE_NAME = 'data/tweet/' + 'area_data' + '.csv'
+COUNT = 150  # < 200
+KEY_TOTAL = 1500
+GENRE = '芸能人'
+FILE_NAME = 'data/tweet/' + 'talent_data' + '.csv'
 
 class TweetsGetter(object):
     __metaclass__ = ABCMeta

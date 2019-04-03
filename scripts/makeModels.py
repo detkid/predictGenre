@@ -18,14 +18,14 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 num_classes = 11
 maxlen = 20
-max_features = 29979  # total words
+max_features = 32114  # total words
 embedding_dims = 50
 batch_size = 1000
 epochs = 4
 kernel_size = 3
 filters = 250
 SPLIT_NUMBER = 90000
-MODEL = 1
+MODEL = 1 # 0: CNN, 1: RNN
 
 
 # 入力データのベクトル化を行う関数
@@ -129,23 +129,6 @@ def make_embedding_RNN(x_train, y_train, max_features, embedding_dims, maxlen):
     return model
 
 
-def evaluate_model(model, x_val, y_val):
-    print('evaluating model...')
-    result = model.predict_classes(x_val)
-
-    for index, group in enumerate(result):
-        if group != y_val[index]:
-            print(str(index) + ': predict = ' + str(group) +
-                  ', label = ' + str(y_val[index]))
-    
-    y_val = keras.utils.to_categorical(y_val, num_classes)
-    score = model.evaluate(x_val,y_val)
-    print('test loss:', score[0])
-    print('test accuracy:', score[1])
-
-    return model
-
-
 if __name__ == "__main__":
 
     data = np.load('data/dataset/clean_dataset.npy')
@@ -162,7 +145,7 @@ if __name__ == "__main__":
     y_val = val_data[:, 1]
 
     x_val = pad_sequences(x_val, maxlen=maxlen)
-    # y_val = keras.utils.to_categorical(y_val, num_classes)
+    y_val = keras.utils.to_categorical(y_val, num_classes)
 
     print('x_train shape = ' + str(x_train.shape))
     print('x_val shape = ' + str(x_val.shape))
@@ -180,5 +163,8 @@ if __name__ == "__main__":
         open('model/rnn/rnn_model.json', 'w').write(json_string)
         model.save_weights('model/rnn/rnn_weights.h5')
 
-    evaluate_model(model, x_val, y_val)
+    # evaluate_model(model, x_val, y_val)
+    score = model.evaluate(x_val, y_val)
+    print('test loss:', score[0])
+    print('test accuracy:', score[1])
     print('end\n')
