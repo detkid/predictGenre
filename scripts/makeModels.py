@@ -21,10 +21,10 @@ maxlen = 20
 max_features = 32114  # total words
 embedding_dims = 50
 batch_size = 1000
-epochs = 4
+cnn_epochs = 4
+rnn_epochs = 5
 kernel_size = 3
 filters = 250
-SPLIT_NUMBER = 90000
 MODEL = 1 # 0: CNN, 1: RNN
 
 
@@ -97,7 +97,7 @@ def make_embedding_CNN(x_train, y_train, max_features, embedding_dims, maxlen):
                   metrics=['accuracy'])
     model.fit(x_train, y_train, validation_split=0.1,
               batch_size=batch_size,
-              epochs=epochs)
+              epochs=cnn_epochs)
 
     return model
 
@@ -112,7 +112,7 @@ def make_embedding_RNN(x_train, y_train, max_features, embedding_dims, maxlen):
                         embedding_dims,
                         input_length=maxlen))
     model.add(Dropout(0.2))
-    model.add(LSTM(10, return_sequences=False))
+    model.add(LSTM(30, return_sequences=False))
 
     # We project onto a single unit output layer, and squash it with a sigmoid:
     #### softmaxを使用するので改良 ###
@@ -124,7 +124,7 @@ def make_embedding_RNN(x_train, y_train, max_features, embedding_dims, maxlen):
                   metrics=['accuracy'])
     model.fit(x_train, y_train, validation_split=0.1,
               batch_size=batch_size,
-              epochs=epochs)
+              epochs=rnn_epochs)
 
     return model
 

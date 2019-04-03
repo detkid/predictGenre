@@ -12,11 +12,16 @@ from sklearn.metrics import classification_report
 import numpy as np
 import pickle
 
+# エラー回避
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
 num_classes = 11
 maxlen = 20
 
 SPLIT_NUMBER = 90000
 EVAL_KIND = 1
+MODEL = 1  # 0:CNN, 1:RNN
 
 
 def evaluate_by_sentence(model, x_val, y_val):
@@ -48,15 +53,32 @@ def evaluate_by_class(model, x_val, y_val):
 
     print(classification_report(y_val, y_label))
 
+    y_val = keras.utils.to_categorical(y_val, num_classes)
+    score = model.evaluate(x_val, y_val)
+    print('test loss:', score[0])
+    print('test accuracy:', score[1])
+
     return model
 
 
 if __name__ == "__main__":
-    json_file = open('model/cnn/cnn_model.json', 'r')
-    model_json = json_file.read()
-    model = model_from_json(model_json)
 
-    model.load_weights('model/cnn/cnn_weights.h5')
+    if MODEL == 0:
+        json_file = open('model/cnn/cnn_model.json', 'r')
+        model_json = json_file.read()
+        model = model_from_json(model_json)
+        model.load_weights('model/cnn/cnn_weights.h5')
+        model.compile(loss='categorical_crossentropy',
+                      optimizer='adam',
+                      metrics=['accuracy'])
+    elif MODEL == 1:
+        json_file = open('model/rnn/rnn_model.json', 'r')
+        model_json = json_file.read()
+        model = model_from_json(model_json)
+        model.load_weights('model/rnn/rnn_weights.h5')
+        model.compile(loss='categorical_crossentropy',
+                      optimizer='adam',
+                      metrics=['accuracy'])
 
     val_data = np.load('data/dataset/val_dataset.npy')
     x_val = val_data[:, 0]
@@ -68,6 +90,6 @@ if __name__ == "__main__":
     # y_val = keras.utils.to_categorical(y_val, num_classes)
 
     if EVAL_KIND == 1:
-      evaluate_by_class(model, x_val, y_val)
+        evaluate_by_class(model, x_val, y_val)
     elif EVAL_KIND == 2:
-      evaluate_by_sentence(model, x_val, y_val)
+        evaluate_by_sentence(model, x_val, y_val)
