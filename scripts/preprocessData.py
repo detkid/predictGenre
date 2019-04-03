@@ -14,7 +14,8 @@ INPUT_TEST_DATA = './data/eval/test.csv'
 OUTPUT_TRAINING_PATH = './data/dataset/clean_dataset.npy'
 OUTPUT_TEST_PATH = './data/dataset/val_dataset.npy'
 
-GENRE = ['スポーツ', '食べ物', '地名', '家族', '本マンガアニメ', '恋愛', '映画', '人間関係', '芸能人', 'テレビ', '仕事']
+GENRE = ['スポーツ', '食べ物', '地名', '家族', '本マンガアニメ',
+         '恋愛', '映画', '人間関係', '芸能人', 'テレビ', '仕事']
 
 
 def csv_to_l_data(file):
@@ -25,7 +26,7 @@ def csv_to_l_data(file):
     node = m.parseToNode('初期化')  # 初期化しないと最初のnode.surfaceが空になる
 
     raw_data = np.genfromtxt(
-        file, delimiter=',', names=True, dtype=None, encoding='utf-8')
+        file, delimiter=',', names=None, dtype=None, encoding='utf-8')
     for row in raw_data:
         text = wash_data(row[2])
         node = m.parseToNode(text)
@@ -54,7 +55,7 @@ def csv_to_v_data(file):
     node = m.parseToNode('初期化')  # 初期化しないと最初のnode.surfaceが空になる
 
     raw_data = np.genfromtxt(
-        file, delimiter=',', names=True, dtype=None, encoding='utf-8')
+        file, delimiter=',', names=None, dtype=None, encoding='utf-8')
     for row in raw_data:
         node = m.parseToNode(row[1])
         seg_txt = []
@@ -174,7 +175,8 @@ if __name__ == "__main__":
         label = GENRE.index(l_data[1])
         data_list = [index_dict[sentence[i]]
                      for i in range(len(sentence)) if index_dict.get(sentence[i])]
-
+        if not data_list:
+            data_list = [0]
         dataset.append([data_list, label])
 
     dataset = np.array(dataset)
