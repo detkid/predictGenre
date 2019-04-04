@@ -11,14 +11,14 @@ import glob
 
 INPUT_TRAINING_DATA = glob.glob('./data/tweet/*.csv')
 INPUT_TEST_DATA = './data/eval/test.csv'
-OUTPUT_TRAINING_PATH = './data/dataset/clean_dataset.npy'
-OUTPUT_TEST_PATH = './data/dataset/val_dataset.npy'
+OUTPUT_TRAINING_PATH = './data/dataset/clean_dataset_char.npy'
+OUTPUT_TEST_PATH = './data/dataset/val_dataset_char.npy'
 
 GENRE = ['スポーツ', '食べ物', '地名', '家族', '本マンガアニメ',
          '恋愛', '映画', '人間関係', '芸能人', 'テレビ', '仕事']
 
 
-def csv_to_l_data(file):
+def csv_to_l_data(file, char_flag=False):
     print(file.name + '- importing as data')
     data = []
     dict_items = []
@@ -36,9 +36,15 @@ def csv_to_l_data(file):
             word = node.surface
             if node.next:
                 word = word.replace(node.next.surface, '')
-            if node.feature.split(',')[0] in ['名詞', '動詞'] and word != row[0]:
-                dict_items.append(word)
-                seg_txt.append(word)
+            if node.feature.split(',')[0] in ['名詞', '動詞']:
+                if char_flag:
+                    word = list(word)
+                    for char in word:
+                        dict_items.append(char)
+                        seg_txt.append(char)
+                else:
+                    dict_items.append(word)
+                    seg_txt.append(word)
             node = node.next
 
         label = row[0]
@@ -47,7 +53,7 @@ def csv_to_l_data(file):
     return data, dict_items
 
 
-def csv_to_v_data(file):
+def csv_to_v_data(file, char_flag=False):
     print(file.name + '- importing as val data')
     data = []
     dict_items = []
@@ -65,7 +71,12 @@ def csv_to_v_data(file):
             if node.next:
                 word = word.replace(node.next.surface, '')
             if node.feature.split(',')[0] in ['名詞', '動詞']:
-                seg_txt.append(word)
+                if char_flag:
+                    word = list(word)
+                    for char in word:
+                        seg_txt.append(char)
+                else:
+                    seg_txt.append(word)
             node = node.next
 
         label = row[0]
@@ -93,7 +104,7 @@ def make_indexdict(words_list):
 
     print('total words:', len(words))
     word_indices = dict((w, i) for i, w in enumerate(words))  # 単語をキーにインデックス検索
-    indices_word = dict((i, w) for i, w in enumerate(words))  # インデックスをキーに単語を検索
+    # indices_word = dict((i, w) for i, w in enumerate(words))  # インデックスをキーに単語を検索
 
     # 単語の出現数をカウント
     for j in range(0, len(mat)):
@@ -112,44 +123,9 @@ def make_indexdict(words_list):
     words = sorted(list(set(words)))
     print('total words:', len(words))
     word_indices = dict((w, i) for i, w in enumerate(words))  # 単語をキーにインデックス検索
-    indices_word = dict((i, w) for i, w in enumerate(words))  # インデックスをキーに単語を検索
+    # indices_word = dict((i, w) for i, w in enumerate(words))  # インデックスをキーに単語を検索
 
     return word_indices
-
-    # 以下、Word2Vec向け
-    # # 前後の語数
-    # maxlen = 10
-
-    # mat_urtext = np.zeros((len(mat), 1), dtype=int)
-    # for i in range(0, len(mat)):
-    #     # 出現頻度の低い単語のインデックスをunkのそれに置き換え
-    #     if mat[i] in word_indices:
-    #         mat_urtext[i, 0] = word_indices[mat[i]]
-    #     else:
-    #         mat_urtext[i, 0] = word_indices['UNK']
-
-    # print(mat_urtext.shape)
-
-    # len_seq = len(mat_urtext) - maxlen
-    # data = []
-    # target = []
-    # for i in range(maxlen, len_seq):
-    #     data.append(mat_urtext[i])
-    #     target.extend(mat_urtext[i-maxlen:i])
-    #     target.extend(mat_urtext[i+1:i+1+maxlen])
-
-    # x_train = np.array(data).reshape(len(data), 1) # indexのリスト
-    # t_train = np.array(target).reshape(len(data), maxlen*2) # 前後の単語のindex (中心の単語は含まない)
-
-    # z = list(zip(x_train, t_train))
-    # nr.seed(12345)
-    # nr.shuffle(z)                 # シャッフル
-    # x_train, t_train = zip(*z)
-
-    # x_train = np.array(x_train).reshape(len(data), 1)
-    # t_train = np.array(t_train).reshape(len(data), maxlen*2)
-
-    # print(x_train.shape, t_train.shape)
 
 
 if __name__ == "__main__":
@@ -158,14 +134,16 @@ if __name__ == "__main__":
     all_words_list = []
     for file_path in INPUT_TRAINING_DATA:
         with open(file_path, encoding='utf-8') as file:
-            data, words_list = csv_to_l_data(file)
+            data, words_list = csv_to_l_data(file, True)
         all_data.extend(data)
         all_words_list.extend(words_list)
     all_data = np.array(all_data)
 
     index_dict = make_indexdict(all_words_list)
 
-    np.save('data/dict/word_indices_with_verb.npy', index_dict)
+    # np.save('data/dict/word_indices_with_verb.npy', index_dict)
+    with open('data/dict/word_indices_with_verb.pickle', 'wb') as f:
+        pickle.dump(index_dict, f)
 
     print('reforming as training dataset.')
     data_list = []
@@ -182,13 +160,13 @@ if __name__ == "__main__":
     dataset = np.array(dataset)
     np.save(OUTPUT_TRAINING_PATH, dataset)
 
-    # with open('data/dict/word_indices_with_verb.npy') as file:
-    #     index_dict = np.load(file)
+    # with open('data/dict/word_indices_with_verb.pickle', 'rb') as file:
+    #     index_dict = pickle.load(file)
 
     print('reforming as test dataset.')
     val_dataset = []
     with open(INPUT_TEST_DATA) as file:
-        data = csv_to_v_data(file)
+        data = csv_to_v_data(file, True)
 
     for v_data_row in data:
         sentence = v_data_row[0]

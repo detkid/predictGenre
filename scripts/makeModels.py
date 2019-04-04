@@ -18,17 +18,21 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 num_classes = 11
 maxlen = 20
-max_features = 32114  # total words
+max_features = 5173  # total words
 embedding_dims = 50
 batch_size = 1000
-cnn_epochs = 4
-rnn_epochs = 5
+cnn_epochs = 8
+rnn_epochs = 8
 kernel_size = 3
-filters = 250
-MODEL = 1 # 0: CNN, 1: RNN
-
+filters = 64
+lstm_units = 100
+hidden_dims = 50
+MODEL = 0  # 0: CNN, 1: RNN
+DATA_TYPE = 'char'  # word or char
 
 # 入力データのベクトル化を行う関数
+
+
 def vectorized_sequences(sequences, dimension=10000):
     results = np.zeros((len(sequences), dimension))
     for i, seq in enumerate(sequences):
@@ -82,10 +86,10 @@ def make_embedding_CNN(x_train, y_train, max_features, embedding_dims, maxlen):
     # we use max pooling:
     model.add(GlobalMaxPooling1D())
 
-    # # We add a vanilla hidden layer:
-    # model.add(Dense(hidden_dims))
-    # model.add(Dropout(0.2))
-    # model.add(Activation('relu'))
+    # We add a vanilla hidden layer:
+    model.add(Dense(hidden_dims))
+    model.add(Dropout(0.2))
+    model.add(Activation('relu'))
 
     # We project onto a single unit output layer, and squash it with a sigmoid:
     #### softmaxを使用するので改良 ###
@@ -95,9 +99,12 @@ def make_embedding_CNN(x_train, y_train, max_features, embedding_dims, maxlen):
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
+
+    early_stopping = EarlyStopping(patience=0, verbose=1)
     model.fit(x_train, y_train, validation_split=0.1,
               batch_size=batch_size,
-              epochs=cnn_epochs)
+              epochs=cnn_epochs,
+              callbacks=[early_stopping])
 
     return model
 
@@ -112,7 +119,7 @@ def make_embedding_RNN(x_train, y_train, max_features, embedding_dims, maxlen):
                         embedding_dims,
                         input_length=maxlen))
     model.add(Dropout(0.2))
-    model.add(LSTM(30, return_sequences=False))
+    model.add(LSTM(lstm_units, return_sequences=False))
 
     # We project onto a single unit output layer, and squash it with a sigmoid:
     #### softmaxを使用するので改良 ###
@@ -122,16 +129,19 @@ def make_embedding_RNN(x_train, y_train, max_features, embedding_dims, maxlen):
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
+
+    early_stopping = EarlyStopping(patience=0, verbose=1)
     model.fit(x_train, y_train, validation_split=0.1,
               batch_size=batch_size,
-              epochs=rnn_epochs)
+              epochs=rnn_epochs,
+              callbacks=[early_stopping])
 
     return model
 
 
 if __name__ == "__main__":
 
-    data = np.load('data/dataset/clean_dataset.npy')
+    data = np.load('data/dataset/clean_dataset_char.npy')
 
     np.random.shuffle(data)
     x_train = data[:, 0]
@@ -140,7 +150,7 @@ if __name__ == "__main__":
     x_train = pad_sequences(x_train, maxlen=maxlen)
     y_train = keras.utils.to_categorical(y_train, num_classes)
 
-    val_data = np.load('data/dataset/val_dataset.npy')
+    val_data = np.load('data/dataset/val_dataset_char.npy')
     x_val = val_data[:, 0]
     y_val = val_data[:, 1]
 
@@ -154,14 +164,18 @@ if __name__ == "__main__":
         model = make_embedding_CNN(
             x_train, y_train, max_features, embedding_dims, maxlen)
         json_string = model.to_json()
-        open('model/cnn/cnn_model.json', 'w').write(json_string)
-        model.save_weights('model/cnn/cnn_weights.h5')
+        open('model/' + DATA_TYPE + '_learning/cnn/cnn_model.json',
+             'w').write(json_string)
+        model.save_weights('model/' + DATA_TYPE +
+                           '_learning/cnn/cnn_weights.h5')
     elif(MODEL == 1):
         model = make_embedding_RNN(
             x_train, y_train, max_features, embedding_dims, maxlen)
         json_string = model.to_json()
-        open('model/rnn/rnn_model.json', 'w').write(json_string)
-        model.save_weights('model/rnn/rnn_weights.h5')
+        open('model/' + DATA_TYPE + '_learning/rnn/rnn_model.json',
+             'w').write(json_string)
+        model.save_weights('model/' + DATA_TYPE +
+                           '_learning/rnn/rnn_weights.h5')
 
     # evaluate_model(model, x_val, y_val)
     score = model.evaluate(x_val, y_val)
