@@ -98,7 +98,8 @@ def evaluate_by_example(model, sentence, char_flag=False):
     x_val = pad_sequences(x_val, maxlen=maxlen)
     result = model.predict(x_val)
 
-    return print(result)
+    for index, result_elem in enumerate(result[0]):
+        print(GENRE[index] + ' : ' + str(result_elem))
 
 
 if __name__ == "__main__":
