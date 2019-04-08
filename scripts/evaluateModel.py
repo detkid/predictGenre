@@ -68,6 +68,7 @@ def evaluate_by_class(model, x_val, y_val):
 
 def evaluate_by_example(model, sentence, char_flag=False):
 
+    print('\n【判定結果】')
     with open('data/dict/word_indices_with_verb.pickle', 'rb') as file:
         index_dict = np.load(file)
 
@@ -140,7 +141,7 @@ if __name__ == "__main__":
         evaluate_by_sentence(model, x_val, y_val)
     elif EVAL_KIND == 3:
         while True:
-            print('Input an example. >')
+            print('\nInput an example. >')
             sentence = input()
             if sentence == 'end':
                 break
