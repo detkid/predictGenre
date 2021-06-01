@@ -56,7 +56,7 @@ tensorboard==1.12.2
 tensorflow==1.15.4
 termcolor==1.1.0
 tweepy==3.7.0
-urllib3==1.24.2
+urllib3==1.26.5
 Wave==0.0.2
 webrtcvad==2.0.10
 Werkzeug==0.15.3
