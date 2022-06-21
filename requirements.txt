@@ -30,7 +30,7 @@ mecab-python3==0.996.1
 mkl-fft==1.0.10
 mkl-random==1.0.2
 numba==0.43.0
-numpy==1.16.2
+numpy==1.22.0
 oauthlib==3.0.1
 pandas==0.24.2
 protobuf==3.6.1
